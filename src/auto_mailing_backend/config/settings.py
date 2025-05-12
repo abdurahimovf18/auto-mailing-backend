@@ -1,12 +1,15 @@
 from datetime import timezone
 from pathlib import Path
+import sys
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+DEBUG = True
 
 TIMEZONE: timezone = timezone.utc
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class Env(BaseSettings):
@@ -31,3 +34,39 @@ env = Env()
 ASYNC_DATABASE_URL = f"postgresql+asyncpg://{env.POSTGRESQL_USER}:{env.POSTGRESQL_PASSWORD}@{env.POSTGRESQL_HOST}:{env.POSTGRESQL_PORT}/{env.POSTGRESQL_DATABASE}"
 SYNC_DATABASE_URL = f"postgresql+psycopg2://{env.POSTGRESQL_USER}:{env.POSTGRESQL_PASSWORD}@{env.POSTGRESQL_HOST}:{env.POSTGRESQL_PORT}/{env.POSTGRESQL_DATABASE}"
 
+
+# ------------------------
+# Logging Configuration
+# ------------------------
+
+# Logging settings for development/debug mode
+LOG_DEBUG_SETTINGS = [
+    {
+        "sink": sys.stdout,
+        "format": "<green>{time: YYYY:MM:DD HH:mm:ss}</green> | <level>{level: <8}</level> | "
+                  "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | <level>{message}</level>",
+        "colorize": True,
+        "level": "DEBUG",
+    },
+    {
+        "sink": BASE_DIR / "logs/debug.log",
+        "level": "INFO",
+        "format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+        "rotation": "7 days",   # Create a new log file every 7 days
+        "retention": "1 month", # Keep logs for one month before deletion
+        "compression": "zip",   # Compress logs after rotation
+    }
+]
+
+# Logging settings for production mode
+LOG_PRODUCTION_SETTINGS = [
+    {
+        "sink": BASE_DIR / "logs/app.log",
+        "level": "INFO",
+        "format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+        "rotation": "7 days",
+        "retention": "1 month",
+        "compression": "zip",
+        "enqueue": True
+    }
+]

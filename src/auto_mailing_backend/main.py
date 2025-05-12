@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
+from .loader import lifespan
 
-app = FastAPI()
 
-
+app = FastAPI(lifespan=lifespan)
