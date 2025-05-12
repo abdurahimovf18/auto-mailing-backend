@@ -1,0 +1,51 @@
+# === Python general ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+.env
+
+# === Poetry ===
+poetry.lock
+# Optional: if you don’t want to track the lockfile
+
+# === VS Code ===
+.vscode/
+
+# === PyCharm ===
+.idea/
+
+# === OS Junk ===
+.DS_Store
+Thumbs.db
+
+# === Cache & logs ===
+*.log
+*.sqlite3
+*.db
+.cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+dist/
+build/
+
+# === Secret/config files ===
+# You may keep these outside version control
+alembic.ini
+src/auto_mailing_backend/config/settings.py  # only if it contains real secrets or defaults
+
+# === Optional: if you use docker/docker-compose ===
+*.pid
+*.sock
+*.tar
+*.gz
+*.tgz
+
+# === Editor swap files ===
+*~
+*.swp
+*.swo
