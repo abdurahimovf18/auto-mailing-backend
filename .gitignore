@@ -1,51 +1,79 @@
-# === Python general ===
+# === Python bytecode ===
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*.env
-.env
+*.so
 
 # === Poetry ===
-poetry.lock
-# Optional: if you don’t want to track the lockfile
+# Ignore Poetry virtual envs (if inside project folder)
+.venv/
+*.venv
 
-# === VS Code ===
+# Lockfile (optional)
+# poetry.lock
+
+# === Environment / Secrets ===
+.env
+.env.*
+*.env
+*.pem
+
+# === Project Secrets / Local Settings ===
+alembic.ini
+
+# === IDEs ===
 .vscode/
-
-# === PyCharm ===
 .idea/
+*.iml
 
 # === OS Junk ===
 .DS_Store
 Thumbs.db
 
-# === Cache & logs ===
+# === Logs / Runtime files ===
 *.log
-*.sqlite3
-*.db
+logs/
+*.out
+*.err
+*.pid
+*.sock
+
+# === Caches ===
 .cache/
 .mypy_cache/
 .pytest_cache/
+.tox/
+coverage.xml
 .coverage
 htmlcov/
-.tox/
+*.pkl
+
+# === Build / Distribution ===
 dist/
 build/
+*.egg-info/
 
-# === Secret/config files ===
-# You may keep these outside version control
-alembic.ini
-src/auto_mailing_backend/config/settings.py  # only if it contains real secrets or defaults
+# === Databases ===
+*.sqlite3
+*.db
 
-# === Optional: if you use docker/docker-compose ===
-*.pid
-*.sock
+# === Docker ===
+docker-compose.override.yml
 *.tar
 *.gz
 *.tgz
 
-# === Editor swap files ===
+# === Editor swap / temp files ===
 *~
 *.swp
 *.swo
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+
+# === Aiogram specific ===
+data/
+sessions/
+bot_sessions/
+state.json

@@ -1,9 +1,10 @@
 from typing import Annotated
 from functools import partial
 from datetime import datetime, timedelta
+from uuid import uuid4, UUID
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy import BigInteger, String, ForeignKey, DateTime, text, Boolean, Index
+from sqlalchemy import BigInteger, ForeignKey, DateTime, text, Boolean, Index, Table, Column, UUID as SQLUUID
 
 from src.auto_mailing_backend.config.settings import TIMEZONE
 from src.auto_mailing_backend.infrastructure.db import Base
@@ -11,140 +12,110 @@ from src.auto_mailing_backend.infrastructure.db import Base
 from . import _enums as enums
 
 
-id_ = Annotated[int, mapped_column(BigInteger, primary_key=True)]
+SQLUUID = SQLUUID(as_uuid=True)
+
+
+id_ = Annotated[UUID, mapped_column(SQLUUID, primary_key=True, default=lambda: uuid4())]
 created_at = Annotated[datetime, mapped_column(DateTime, server_default=text("TIMEZONE('UTC', NOW())"))]
 updated_at = Annotated[datetime, mapped_column(DateTime, server_default=text("TIMEZONE('UTC', NOW())"), 
                                                onupdate=partial(datetime.now, TIMEZONE))]
 
 bigint = Annotated[int, mapped_column(BigInteger)]
 
-def_true_bool = Annotated[bool, mapped_column(Boolean, server_default=text("true"))]
-def_false_bool = Annotated[bool, mapped_column(Boolean, server_default=text("false"))]
+tb = Annotated[bool, mapped_column(Boolean, server_default=text("true"))]
+fb = Annotated[bool, mapped_column(Boolean, server_default=text("false"))]
 
 
 MESSAGE_DEFAULT_INTERVAL = timedelta(hours=1)
-MESSAGE_DEFAULT_SQL_INTERVAL = "INTERVAL '1 hour'"
+
+
+message_group_m2m = Table(
+    "message_group_m2m",
+    Base.metadata,
+    Column("message_id", SQLUUID, ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True),
+    Column("group_id", SQLUUID, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True),
+)
+
+message_account_m2m = Table(
+    "message_account_m2m",
+    Base.metadata,
+    Column("message_id", SQLUUID, ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True),
+    Column("account_id", SQLUUID, ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[id_]
-    chat_id: Mapped[bigint]
 
-    privilege: Mapped[enums.UserPrivileges] = mapped_column(server_default=enums.UserPrivileges.USER.value)
+    username: Mapped[str]
+    password: Mapped[str]
 
-    is_active: Mapped[def_true_bool]
-    is_deleted: Mapped[def_true_bool]
+    privilage: Mapped[enums.UserPrivileges] = mapped_column(server_default=enums.UserPrivileges.USER.value)
 
-    language: Mapped[enums.UserLanguages] = mapped_column(server_default=enums.UserLanguages.UZ.value)
+    language: Mapped[enums.UserLanguages]
+
+    is_active: Mapped[tb]
+    is_deleted: Mapped[fb]
 
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
 
-    accounts: Mapped[list["Account"]] = relationship(back_populates="users", secondary="user_accounts")
-    groups: Mapped[list["Group"]] = relationship(back_populates="user")
-
-
-class Message(Base):
-    __tablename__ = "messages"
-
-    id: Mapped[id_]
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete=enums.OnDelete.CASCADE))
-
-    status: Mapped[enums.MessageStatus] = mapped_column(server_default=enums.MessageStatus.BUILDING.value)
-
-    caption: Mapped[str | None]
-    interval: Mapped[timedelta] = mapped_column(server_default=text(MESSAGE_DEFAULT_SQL_INTERVAL))
-    created_at: Mapped[created_at]
-
-    groups: Mapped[list["Group"]] = relationship(back_populates="messages", secondary="message_groups")
-    media: Mapped[list["MessageMedia"]] = relationship(back_populates="message")
-    accounts: Mapped[list["Account"]] = relationship(back_populates="messages", secondary="message_accounts")
-
-    # __table_args__ = (
-    #     Index("message_user_id_inx", "user_id"),
-    # )
-
-
-class MessageMedia(Base):
-    __tablename__ = "message_media"
-
-    id: Mapped[id_]
-    message_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("messages.id", ondelete=enums.OnDelete.RESTRICT))
-    tg_token: Mapped[str]
-    content_type: Mapped[enums.MessageMediaTypes]
-
-    message: Mapped["Message"] = relationship(back_populates="media", uselist=False)
+    accounts: Mapped[list["Account"]] = relationship("Account", back_populates="user")
 
 
 class Account(Base):
     __tablename__ = "accounts"
 
     id: Mapped[id_]
-    phone_number: Mapped[str] = mapped_column(String(30))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    phone: Mapped[str]
+    
     created_at: Mapped[created_at]
+    updated_at: Mapped[updated_at]
 
-    users: Mapped[list["User"]] = relationship(back_populates="accounts", secondary="user_accounts")
-    messages: Mapped[list["Message"]] = relationship(back_populates="accounts", secondary="message_accounts")
+    messages: Mapped[list["Message"]] = relationship("Message", back_populates="accounts", secondary=message_account_m2m)
+    user: Mapped["User"] = relationship("User", back_populates="accounts", uselist=False)
 
 
 class Group(Base):
     __tablename__ = "groups"
 
     id: Mapped[id_]
-    chat_id: Mapped[bigint]
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
-    link: Mapped[str] = mapped_column(String(50))
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete=enums.OnDelete.RESTRICT))
-    created_at: Mapped[created_at]
-
-    user: Mapped["User"] = relationship(back_populates="groups", uselist=False)
-    messages: Mapped[list["Message"]] = relationship(back_populates="groups", secondary="message_groups")
-
-
-class MessageGroups(Base):
-    __tablename__ = "message_groups"
-
-    group_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("groups.id", ondelete=enums.OnDelete.CASCADE),
-                                          primary_key=True)
-    message_id: Mapped[int] = mapped_column(BigInteger, 
-                                            ForeignKey("messages.id", ondelete=enums.OnDelete.CASCADE),
-                                            primary_key=True)
-
-
-class MessageAccount(Base):
-    __tablename__ = "message_accounts"
-
-    account_id: Mapped[int] = mapped_column(BigInteger, 
-                                            ForeignKey("accounts.id", ondelete=enums.OnDelete.RESTRICT),
-                                            primary_key=True)
-    message_id: Mapped[int] = mapped_column(BigInteger, 
-                                            ForeignKey("messages.id", ondelete=enums.OnDelete.CASCADE),
-                                            primary_key=True)
-    
-
-class UserAccount(Base):
-    __tablename__ = "user_accounts"
-
-    account_id: Mapped[int] = mapped_column(BigInteger, 
-                                            ForeignKey("accounts.id", ondelete="CASCADE"),
-                                            primary_key=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, 
-                                         ForeignKey("users.id", ondelete="CASCADE"),
-                                         primary_key=True)
-
-
-class BotSettings(Base):
-    __tablename__ = "bot_settings"
-
-    id: Mapped[id_]
-
-    key: Mapped[str] = mapped_column(unique=True)
-    value: Mapped[str | None]
+    link: Mapped[str]
 
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
-    
-    __table_args__ = Index("inx_value", "value"), Index("inx_key", "key")
-        
+
+    messages: Mapped[list["Message"]] = relationship("Message", back_populates="groups", secondary=message_group_m2m)
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[id_]
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+
+    text: Mapped[str | None]
+    interval: Mapped[timedelta] = mapped_column(default=MESSAGE_DEFAULT_INTERVAL)
+
+    created_at: Mapped[created_at]
+    updated_at: Mapped[updated_at]
+
+    groups: Mapped[list["Group"]] = relationship("Group", back_populates="messages", secondary=message_group_m2m)
+    accounts: Mapped[list["Account"]] = relationship("Account", back_populates="messages", secondary=message_account_m2m)
+    media: Mapped[list["MessageMedia"]] = relationship("MessageMedia", back_populates="message")
+
+
+class MessageMedia(Base):
+    __tablename__ = "message_media"
+
+    id: Mapped[id_]
+    message_id: Mapped[UUID] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"))
+
+    url: Mapped[str]
+
+    message: Mapped["Message"] = relationship("Message", uselist=False, back_populates="media")

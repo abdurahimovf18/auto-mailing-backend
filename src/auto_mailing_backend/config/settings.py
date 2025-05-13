@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import timezone, timedelta
 from pathlib import Path
 import sys
 
@@ -22,6 +22,14 @@ class Env(BaseSettings):
     POSTGRESQL_HOST: str
     POSTGRESQL_PORT: int
     POSTGRESQL_DATABASE: str
+
+    # ---------------------------------------------
+    # Jwt authentication
+    # ---------------------------------------------
+
+    JWT_ALGORITHM: str
+    JWT_TOKEN: str
+    JWT_ISS: str
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env"
@@ -70,3 +78,9 @@ LOG_PRODUCTION_SETTINGS = [
         "enqueue": True
     }
 ]
+
+
+JWT_TOKEN = env.JWT_TOKEN
+JWT_ALGORITHM = env.JWT_ALGORITHM
+JWT_EXP = timedelta(minutes=15)
+JWT_ISS = env.JWT_ISS

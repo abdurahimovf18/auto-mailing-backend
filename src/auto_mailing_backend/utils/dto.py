@@ -7,3 +7,6 @@ class BaseDTO(BaseModel):
         from_attributes=True
     )
     
+    def to_dict(self, ) -> dict:
+        return self.model_dump()
+    
